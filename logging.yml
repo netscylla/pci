@@ -33,7 +33,7 @@ loggers:
         propagate: yes
 
     __main__:
-        level: INFO
+        level: DEBUG
         handlers: [console, file]
         propagate: yes
 

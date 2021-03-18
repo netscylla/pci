@@ -22,12 +22,14 @@ logger = logging.getLogger(__name__)
 
 # check databases
 try:
-    _graph_db = Graph('http://localhost:7474', user="neo4j", password="password1")
+    _graph_db = Graph('http://localhost:7474', user="neo4j", password="test")
+    logger.info("Deleting existing graph data ...")
+    _graph_db.delete_all()
     _matcher = NodeMatcher(_graph_db)
     _reader = geoip2.database.Reader('./db/geoip/GeoLite2-City.mmdb',
                                      mode=geoip2.database.MODE_MMAP)
 except:
-    logger.info("neo4j of geoip not available")
+    logger.info("neo4j or geoip not available")
     sys.exit(1)
 
 
@@ -157,7 +159,7 @@ def do_the_job(pkt):
     info = pkt.info
     length = pkt.length
     # print(pkt)
-    # print('%s  %s --> %s (%s) - %s' % (typ, src, dst, length, info))
+    logger.debug('%s  %s --> %s (%s) - %s' % (typ, src, dst, length, info))
     logger.debug("Protocol: " + typ + ", Source: " + src + ", Destination: " + dst)
 
     a = get_node(arg=src)
@@ -167,6 +169,18 @@ def do_the_job(pkt):
     # _graph_db.merge(PACKET_TO(a, b))
     _graph_db.merge(Relationship(a, typ, b))
 
+    if typ == "HTTP":
+      if info[:4] == "GET " or  info[:4] == "POST" :
+        c = get_node(arg=info)
+        _graph_db.merge(Relationship(b,info[:4],c))
+      if info[:4] == "HTTP":     
+        _graph_db.merge(Relationship(a,info[:12],b))
+    
+    if typ == "DNS":
+      dns_record_t=info.split(' ')[2]
+      if dns_record_t != "response":
+        c = get_node(arg=info.split(' ')[4])
+        _graph_db.merge(Relationship(b,typ,c))
 
 if __name__ == "__main__":
     # args parser
